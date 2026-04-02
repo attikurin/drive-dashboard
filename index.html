@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ローカル ドライブ ダッシュボード</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* カスタムスクロールバーなどの微調整 */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+        }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen text-slate-800 font-sans selection:bg-blue-100 selection:text-blue-900">
+
+    <!-- ヘッダー -->
+    <header class="glass-effect sticky top-0 z-30 border-b border-slate-200 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="bg-blue-600 p-2 rounded-lg text-white shadow-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                    </svg>
+                </div>
+                <h1 class="text-xl font-bold tracking-tight text-slate-900 hidden sm:block">ドライブ・ダッシュボード</h1>
+            </div>
+            
+            <div class="flex items-center gap-4">
+                <div class="relative hidden md:block text-slate-500">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 absolute left-3 top-1/2 transform -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    <input type="text" id="searchInput" placeholder="ファイルを検索..." class="pl-10 pr-4 py-2 border border-slate-300 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-slate-50 transition-all w-64" oninput="filterFiles()">
+                </div>
+                <button onclick="openModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-full text-sm font-semibold transition-all shadow-sm hover:shadow-md flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                    </svg>
+                    新規登録
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- メインコンテンツ -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col md:flex-row gap-8">
+        
+        <!-- サイドバー（カテゴリ） -->
+        <aside class="w-full md:w-64 flex-shrink-0">
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sticky top-24">
+                <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 px-2">カテゴリ</h2>
+                <ul id="categoryList" class="space-y-1">
+                    <!-- カテゴリリストがここに生成されます -->
+                </ul>
+            </div>
+        </aside>
+
+        <!-- ファイルグリッド -->
+        <div class="flex-1">
+            <!-- モバイル用検索バー -->
+            <div class="mb-6 md:hidden relative text-slate-500">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 absolute left-3 top-1/2 transform -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input type="text" id="searchInputMobile" placeholder="ファイルを検索..." class="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white shadow-sm" oninput="document.getElementById('searchInput').value = this.value; filterFiles();">
+            </div>
+
+            <div class="flex justify-between items-end mb-4">
+                <h2 id="currentCategoryTitle" class="text-2xl font-bold text-slate-800">すべてのファイル</h2>
+                <span id="fileCount" class="text-sm font-medium text-slate-500 bg-slate-200 px-3 py-1 rounded-full">0 件</span>
+            </div>
+
+            <div id="fileGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                <!-- ファイルカードがここに生成されます -->
+            </div>
+
+            <!-- 空の状態 -->
+            <div id="emptyState" class="hidden flex flex-col items-center justify-center py-20 px-4 text-center">
+                <div class="bg-blue-50 p-6 rounded-full mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                </div>
+                <h3 class="text-lg font-semibold text-slate-900 mb-1">ファイルがありません</h3>
+                <p class="text-slate-500 mb-6 max-w-sm">右上または下のボタンから、GoogleドライブのファイルのURLを登録して管理を始めましょう。</p>
+                <button onclick="openModal()" class="text-blue-600 font-medium hover:text-blue-700 hover:underline">
+                    最初のファイルを登録する
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- 登録・編集モーダル -->
+    <div id="modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm hidden flex items-center justify-center z-50 opacity-0 transition-opacity duration-200">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 transform scale-95 transition-transform duration-200" id="modalContent">
+            <div class="flex justify-between items-center p-6 border-b border-slate-100">
+                <h3 class="text-xl font-bold text-slate-800" id="modalTitle">ファイルを登録</h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-2 rounded-full transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            
+            <form id="fileForm" onsubmit="saveFile(event)" class="p-6 space-y-5">
+                <input type="hidden" id="fileId">
+                
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1">ファイル名</label>
+                    <input type="text" id="titleInput" required placeholder="例: 月間売上レポート" class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1">Google ドライブ URL</label>
+                    <input type="url" id="urlInput" required placeholder="https://docs.google.com/..." class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm">
+                    <p class="text-xs text-slate-500 mt-1">共有リンクを貼り付けてください</p>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1">カテゴリ</label>
+                    <input type="text" id="categoryInput" placeholder="例: 経理, 企画, 個人" list="categorySuggestions" class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all">
+                    <datalist id="categorySuggestions"></datalist>
+                </div>
+
+                <div class="pt-2 flex justify-end gap-3">
+                    <button type="button" onclick="closeModal()" class="px-5 py-2.5 text-slate-600 font-medium hover:bg-slate-100 rounded-lg transition-colors">キャンセル</button>
+                    <button type="submit" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors shadow-sm">保存する</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // アプリケーションの状態
+        let files = [];
+        let currentCategory = 'all';
+
+        // 初期化処理
+        function init() {
+            const savedData = localStorage.getItem('driveDashboardFiles');
+            if (savedData) {
+                try {
+                    files = JSON.parse(savedData);
+                } catch (e) {
+                    console.error('データの読み込みに失敗しました', e);
+                    files = [];
+                }
+            }
+            renderApp();
+        }
+
+        // データの保存
+        function saveData() {
+            localStorage.setItem('driveDashboardFiles', JSON.stringify(files));
+        }
+
+        // URLからファイルタイプを推測して色とアイコンを決定する
+        function getFileTheme(url) {
+            url = url.toLowerCase();
+            if (url.includes('spreadsheets') || url.includes('excel')) {
+                return { color: 'text-green-600 bg-green-50 border-green-200 hover:border-green-300', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />', type: 'Spreadsheet' };
+            }
+            if (url.includes('document') || url.includes('word')) {
+                return { color: 'text-blue-600 bg-blue-50 border-blue-200 hover:border-blue-300', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />', type: 'Document' };
+            }
+            if (url.includes('presentation') || url.includes('slide')) {
+                return { color: 'text-yellow-600 bg-yellow-50 border-yellow-200 hover:border-yellow-300', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />', type: 'Presentation' };
+            }
+            if (url.includes('forms')) {
+                return { color: 'text-purple-600 bg-purple-50 border-purple-200 hover:border-purple-300', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />', type: 'Form' };
+            }
+            // デフォルト
+            return { color: 'text-slate-600 bg-slate-50 border-slate-200 hover:border-slate-300', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 01-2 2z" />', type: 'File' };
+        }
+
+        // 画面の再描画
+        function renderApp() {
+            renderCategories();
+            filterFiles();
+            updateDatalist();
+        }
+
+        // カテゴリリストの描画
+        function renderCategories() {
+            const listContainer = document.getElementById('categoryList');
+            const categories = ['all', ...new Set(files.map(f => f.category).filter(c => c))].sort();
+            
+            listContainer.innerHTML = '';
+            
+            categories.forEach(cat => {
+                const li = document.createElement('li');
+                const isSelected = currentCategory === cat;
+                const displayName = cat === 'all' ? 'すべてのファイル' : cat;
+                const count = cat === 'all' ? files.length : files.filter(f => f.category === cat).length;
+                
+                li.innerHTML = `
+                    <button onclick="setCategory('${cat}')" class="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isSelected ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}">
+                        <span class="truncate">${displayName}</span>
+                        <span class="text-xs ${isSelected ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-500'} px-2 py-0.5 rounded-full">${count}</span>
+                    </button>
+                `;
+                listContainer.appendChild(li);
+            });
+        }
+
+        // カテゴリのセット
+        function setCategory(cat) {
+            currentCategory = cat;
+            document.getElementById('currentCategoryTitle').textContent = cat === 'all' ? 'すべてのファイル' : cat;
+            renderCategories(); // 選択状態の更新
+            filterFiles();
+        }
+
+        // ファイルのフィルタリングと描画
+        function filterFiles() {
+            const searchQuery = (document.getElementById('searchInput').value || document.getElementById('searchInputMobile').value || '').toLowerCase();
+            const grid = document.getElementById('fileGrid');
+            const emptyState = document.getElementById('emptyState');
+            
+            let filtered = files;
+            
+            // カテゴリフィルタ
+            if (currentCategory !== 'all') {
+                filtered = filtered.filter(f => f.category === currentCategory);
+            }
+            
+            // 検索フィルタ
+            if (searchQuery) {
+                filtered = filtered.filter(f => 
+                    f.title.toLowerCase().includes(searchQuery) || 
+                    f.category.toLowerCase().includes(searchQuery)
+                );
+            }
+
+            document.getElementById('fileCount').textContent = `${filtered.length} 件`;
+
+            if (filtered.length === 0) {
+                grid.innerHTML = '';
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+                grid.innerHTML = '';
+                
+                // 新しい順にソート
+                filtered.sort((a, b) => b.timestamp - a.timestamp).forEach(file => {
+                    const theme = getFileTheme(file.url);
+                    const card = document.createElement('div');
+                    card.className = `bg-white rounded-xl border ${theme.color.split(' ').filter(c=>c.startsWith('border') || c.startsWith('hover:border')).join(' ')} shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col group relative`;
+                    
+                    const dateObj = new Date(file.timestamp);
+                    const dateStr = `${dateObj.getFullYear()}/${String(dateObj.getMonth()+1).padStart(2,'0')}/${String(dateObj.getDate()).padStart(2,'0')}`;
+                    
+                    card.innerHTML = `
+                        <a href="${file.url}" target="_blank" rel="noopener noreferrer" class="p-5 flex-1 cursor-pointer block">
+                            <div class="flex items-start justify-between mb-3">
+                                <div class="p-2.5 rounded-lg ${theme.color.split(' ').filter(c=>c.startsWith('bg-') || c.startsWith('text-')).join(' ')}">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        ${theme.icon}
+                                    </svg>
+                                </div>
+                            </div>
+                            <h3 class="text-base font-bold text-slate-800 line-clamp-2 mb-1 group-hover:text-blue-600 transition-colors">${file.title}</h3>
+                            <div class="flex items-center gap-2 mt-auto pt-3">
+                                <span class="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-1 rounded border border-slate-200">
+                                    ${file.category || '未分類'}
+                                </span>
+                                <span class="text-xs text-slate-400 ml-auto">${dateStr}</span>
+                            </div>
+                        </a>
+                        <!-- アクションボタン -->
+                        <div class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                            <button onclick="editFile('${file.id}')" class="p-1.5 bg-white border border-slate-200 rounded-md text-slate-500 hover:text-blue-600 hover:border-blue-200 shadow-sm transition-colors" title="編集">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                            </button>
+                            <button onclick="deleteFile('${file.id}')" class="p-1.5 bg-white border border-slate-200 rounded-md text-slate-500 hover:text-red-600 hover:border-red-200 shadow-sm transition-colors" title="削除">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                            </button>
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                });
+            }
+        }
+
+        // 入力候補の更新
+        function updateDatalist() {
+            const datalist = document.getElementById('categorySuggestions');
+            const categories = [...new Set(files.map(f => f.category).filter(c => c))];
+            datalist.innerHTML = categories.map(c => `<option value="${c}">`).join('');
+        }
+
+        // 保存（新規・更新）
+        function saveFile(e) {
+            e.preventDefault();
+            
+            const id = document.getElementById('fileId').value;
+            const title = document.getElementById('titleInput').value.trim();
+            const url = document.getElementById('urlInput').value.trim();
+            let category = document.getElementById('categoryInput').value.trim();
+            
+            if (!category) category = '未分類';
+
+            if (id) {
+                // 更新
+                const index = files.findIndex(f => f.id === id);
+                if (index !== -1) {
+                    files[index] = { ...files[index], title, url, category };
+                }
+            } else {
+                // 新規
+                files.push({
+                    id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
+                    title,
+                    url,
+                    category,
+                    timestamp: Date.now()
+                });
+            }
+
+            saveData();
+            closeModal();
+            renderApp();
+        }
+
+        // 削除
+        function deleteFile(id) {
+            if (confirm('このファイルをダッシュボードから削除しますか？\n(実際のGoogleドライブ上のファイルは削除されません)')) {
+                files = files.filter(f => f.id !== id);
+                saveData();
+                renderApp();
+            }
+        }
+
+        // 編集モーダルを開く
+        function editFile(id) {
+            const file = files.find(f => f.id === id);
+            if (file) {
+                document.getElementById('fileId').value = file.id;
+                document.getElementById('titleInput').value = file.title;
+                document.getElementById('urlInput').value = file.url;
+                document.getElementById('categoryInput').value = file.category === '未分類' ? '' : file.category;
+                
+                document.getElementById('modalTitle').textContent = 'ファイルを編集';
+                openModal(false);
+            }
+        }
+
+        // モーダルの制御
+        const modal = document.getElementById('modal');
+        const modalContent = document.getElementById('modalContent');
+
+        function openModal(isNew = true) {
+            if (isNew) {
+                document.getElementById('fileForm').reset();
+                document.getElementById('fileId').value = '';
+                document.getElementById('modalTitle').textContent = 'ファイルを登録';
+                // 選択中のカテゴリがあれば初期値にする
+                if (currentCategory !== 'all') {
+                    document.getElementById('categoryInput').value = currentCategory;
+                }
+            }
+            
+            modal.classList.remove('hidden');
+            // 少し遅延させてアニメーションを適用
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                modalContent.classList.remove('scale-95');
+                modalContent.classList.add('scale-100');
+            }, 10);
+            
+            // 入力欄にフォーカス
+            setTimeout(() => document.getElementById('titleInput').focus(), 100);
+        }
+
+        function closeModal() {
+            modal.classList.add('opacity-0');
+            modalContent.classList.remove('scale-100');
+            modalContent.classList.add('scale-95');
+            
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 200); // Tailwindの transition-duration と合わせる
+        }
+
+        // モーダルの外側クリックで閉じる
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) closeModal();
+        });
+
+        // アプリ起動
+        init();
+
+    </script>
+</body>
+</html>
